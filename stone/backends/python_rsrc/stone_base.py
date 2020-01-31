@@ -35,6 +35,40 @@ class Struct(object):
         # type: (typing.Type[T], typing.Text, typing.Callable[[T, U], U]) -> None
         pass
 
+    def __eq__(self, other):
+        # type: (object) -> bool
+        if not isinstance(self, type(other)):
+            return False
+
+        return all(
+            getattr(self, field) == getattr(other, field)
+            for field in self._all_field_names_
+            if hasattr(other, field)
+        )
+
+    def __ne__(self, other):
+        # type: (object) -> bool
+        return not self == other
+
+    def __hash__(self):
+        # type: () -> int
+        def hashable_fields():
+            # type: () -> typing.Iterable[typing.Hashable]
+            """
+            Skip over things we can't hash like dicts. We could try to convert them,
+            but let's not add complexity until the performance gain is needed.
+            """
+            for field in self._all_field_names_:
+                value = getattr(self, field)
+                try:
+                    hash(value)
+                    yield (field, value)
+                except TypeError:
+                    pass
+
+        return hash(frozenset(hashable_fields()))
+
+
 class Union(object):
     # TODO(kelkabany): Possible optimization is to remove _value if a
     # union is composed of only symbols.
